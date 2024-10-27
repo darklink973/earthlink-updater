@@ -1,14 +1,32 @@
-@font-face {
-    font-family: "Kanit";
-    src: url(/assets/fonts/Kanit-Bold.ttf);
+/* styles.css */
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
 }
 
-body{
-    font-family: "Kanit", Verdana;
-    min-height: 100vh;
-    background-color: #313638;
+h1 {
+    color: #333;
 }
 
-text{
+button {
+    background-color: #4CAF50; /* Vert */
     color: white;
+    border: none;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+#path-display, #log {
+    margin-top: 20px;
+    font-size: 16px;
+    color: #555;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
 }

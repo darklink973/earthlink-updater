@@ -1,13 +1,13 @@
 {
   "devDependencies": {
-    "electron": "^31.3.1"
+    "electron": "^33.0.2"
   },
   "name": "earthlink-updater",
   "version": "0.0.1",
   "description": "An updater for my minecraft launcher",
   "main": "main.js",
   "dependencies": {
-    "axios": "^1.7.3",
+    "axios": "^1.7.7",
     "boolean": "^3.2.0",
     "buffer-crc32": "^0.2.13",
     "cacheable-lookup": "^5.0.4",

@@ -1,31 +1,50 @@
-const { app, BrowserWindow, win, Menu, ipcMain } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const { exec } = require('child_process');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const os = require('os');
-Menu.setApplicationMenu(false);
 
-function getPlatformIcon(filename){
-    let ext
-    switch(process.platform) {
-        case 'win32':
-            ext = 'ico'
-            break
-        case 'darwin':
-            ext = 'icns'
-            break
-        case 'linux':
-        default:
-            ext = 'png'
-            break
-    }
+let mainWindow;
 
-    return path.join(__dirname, 'icon', `${filename}.${ext}`)
+// Define the default path for the EarthLink Launcher executable
+const defaultExePath = path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'EarthLink Launcher', 'EarthLink Launcher.exe');
+
+// Function to check if EarthLink Launcher is running
+function isEarthLinkRunning() {
+    return new Promise((resolve, reject) => {
+        exec('tasklist', (error, stdout, stderr) => {
+            if (error) {
+                return reject(`Error: ${error.message}`);
+            }
+            // Check if the EarthLink Launcher process is in the list
+            const isRunning = stdout.toLowerCase().includes('earthlink launcher.exe');
+            resolve(isRunning);
+        });
+    });
 }
 
-function createWindow () {
-    const mainWindow = new BrowserWindow({
+// Function to close the EarthLink Launcher
+function closeEarthLink() {
+    return new Promise((resolve, reject) => {
+        exec('taskkill /F /IM "EarthLink Launcher.exe"', (error, stdout, stderr) => {
+            if (error) {
+                return reject(`Error closing EarthLink Launcher: ${error.message}`);
+            }
+            resolve(stdout);
+        });
+    });
+}
+
+async function createWindow() {
+    // Check if EarthLink Launcher is running and close it
+    const running = await isEarthLinkRunning();
+    if (running) {
+        console.log("Closing EarthLink Launcher...");
+        await closeEarthLink(); // Close EarthLink before proceeding
+    }
+
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
@@ -33,132 +52,91 @@ function createWindow () {
             contextIsolation: true,
             enableRemoteModule: false,
             nodeIntegration: false,
-            titleBarStyle: 'hidden',
-            frame: false,
         }
     });
 
     mainWindow.loadFile('index.html');
 }
 
-app.whenReady().then(() => {
-    createWindow();
+// Handle downloading a file
+ipcMain.handle('download-file', async (event, url) => {
+    const tempPath = path.join(os.tmpdir(), path.basename(url));
+    
+    try {
+        const response = await axios({
+            method: 'GET',
+            url: url,
+            responseType: 'stream',
+        });
 
-    ipcMain.handle('get-latest-release', async (event, includePreReleases) => {
-        try {
-            const releasesUrl = 'https://api.github.com/repos/darklink973/EarthLinkLauncher/releases';
-            const releasesResponse = await axios.get(releasesUrl, {
-                headers: { 'Accept': 'application/vnd.github.v3+json' }
-            });
+        const writer = fs.createWriteStream(tempPath);
+        response.data.pipe(writer);
 
-            let release = releasesResponse.data[0];
-            if (includePreReleases) {
-                release = releasesResponse.data.find(r => r.prerelease) || release;
-            } else {
-                release = releasesResponse.data.find(r => !r.prerelease) || release;
+        return new Promise((resolve, reject) => {
+            writer.on('finish', () => resolve(tempPath));
+            writer.on('error', () => reject('Error writing file'));
+        });
+    } catch (error) {
+        throw new Error(`Error downloading file: ${error.message}`);
+    }
+});
+
+// Handle checking the version of the .exe file
+ipcMain.handle('get-file-version', async () => {
+    return new Promise((resolve, reject) => {
+        exec(`powershell -command "(Get-Item '${defaultExePath}').VersionInfo.FileVersion"`, (error, stdout, stderr) => {
+            if (error) {
+                return reject(`Error: ${error.message}`);
             }
-
-            return {
-                version: release.tag_name,
-                notes: release.body || 'Aucune note disponible',
-                url: release.assets.find(a => a.name.endsWith('.exe'))?.browser_download_url || ''
-            };
-        } catch (error) {
-            console.error(`Erreur lors de la récupération des releases: ${error.message}`);
-            return { version: 'Erreur', notes: 'Erreur lors de la récupération des notes.', url: '' };
-        }
-    });
-
-    ipcMain.on('download-and-execute', async (event, { includePreReleases = false }) => {
-        const tempDir = os.tmpdir();
-        const filePath = path.join(tempDir, 'file.exe');
-
-        try {
-            const releasesUrl = 'https://api.github.com/repos/darklink973/EarthLinkLauncher/releases';
-            const releasesResponse = await axios.get(releasesUrl, {
-                headers: { 'Accept': 'application/vnd.github.v3+json' }
-            });
-
-            let release = releasesResponse.data[0];
-            if (includePreReleases) {
-                release = releasesResponse.data.find(r => r.prerelease) || release;
-            } else {
-                release = releasesResponse.data.find(r => !r.prerelease) || release;
+            if (stderr) {
+                return reject(`Error: ${stderr}`);
             }
-
-            const asset = release.assets.find(a => a.name.endsWith('.exe'));
-            if (!asset) {
-                event.reply('download-progress', 'Aucun fichier .exe trouvé.');
-                return;
-            }
-            const fileUrl = asset.browser_download_url;
-
-            console.log(`Téléchargement depuis l'URL: ${fileUrl}`);
-            const response = await axios({
-                method: 'get',
-                url: fileUrl,
-                responseType: 'stream',
-                headers: { 'User-Agent': 'Mozilla/5.0' }
-            });
-
-            const totalLength = parseInt(response.headers['content-length'], 10);
-            if (!totalLength) {
-                event.reply('download-progress', 'Impossible de déterminer la taille du fichier.');
-                return;
-            }
-
-            const writer = fs.createWriteStream(filePath);
-            let downloadedLength = 0;
-
-            response.data.on('data', (chunk) => {
-                downloadedLength += chunk.length;
-                const progress = Math.round((downloadedLength / totalLength) * 100);
-                event.reply('download-progress', `Téléchargé : ${progress}%`);
-            });
-
-            response.data.pipe(writer);
-
-            writer.on('finish', () => {
-                writer.close();
-                event.reply('download-progress', 'Téléchargement terminé !');
-
-                const quotedFilePath = `"${filePath}"`;
-
-                console.log(`Tentative d'exécution du fichier : ${quotedFilePath}`);
-                exec(quotedFilePath, (error, stdout, stderr) => {
-                    fs.unlink(filePath, (err) => {
-                        if (err) {
-                            console.error(`Erreur lors de la suppression du fichier temporaire: ${err.message}`);
-                        }
-                    });
-
-                    if (error) {
-                        console.error(`Erreur lors de l'exécution du fichier: ${error.message}`);
-                        event.reply('download-progress', `Erreur lors de l'exécution du fichier: ${error.message}`);
-                        return;
-                    }
-                    if (stderr) {
-                        console.error(`Erreur standard: ${stderr}`);
-                        event.reply('download-progress', `Erreur standard: ${stderr}`);
-                        return;
-                    }
-                    console.log(`Sortie standard: ${stdout}`);
-                    event.reply('download-progress', 'Fichier exécuté avec succès.');
-                });
-            });
-
-            writer.on('error', (err) => {
-                console.error(`Erreur lors du téléchargement du fichier: ${err.message}`);
-                fs.unlink(filePath, () => {});
-                event.reply('download-progress', 'Erreur lors du téléchargement du fichier.');
-            });
-
-        } catch (error) {
-            console.error(`Erreur lors du téléchargement: ${error.message}`);
-            event.reply('download-progress', 'Erreur lors du téléchargement.');
-        }
+            resolve(stdout.trim()); // Return the version without extra spaces
+        });
     });
 });
+
+// Handle fetching the latest version from GitHub releases
+ipcMain.handle('get-latest-version', async () => {
+    const repoUrl = 'https://api.github.com/repos/darklink973/EarthLinkLauncher/releases/latest';
+    
+    try {
+        const response = await axios.get(repoUrl, {
+            headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'MyElectronApp' // GitHub API requires a User-Agent header
+            }
+        });
+        // Remove the "v" prefix from the version
+        return response.data.tag_name.replace(/^v/, '');
+    } catch (error) {
+        throw new Error(`Error fetching latest version: ${error.message}`);
+    }
+});
+
+// Handle executing the downloaded file
+ipcMain.handle('execute-file', async () => {
+    return new Promise((resolve, reject) => {
+        exec(`"${defaultExePath}"`, (error, stdout, stderr) => {
+            if (error) {
+                return reject(`Error: ${error.message}`);
+            }
+            if (stderr) {
+                return reject(`Error: ${stderr}`);
+            }
+            resolve(stdout); // Return the standard output
+        });
+    });
+});
+
+// Handle closing the main window after an update
+ipcMain.handle('close-app', () => {
+    if (mainWindow) {
+        mainWindow.close();
+    }
+});
+
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -169,8 +147,5 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
-    }
-    if (win === null) {
-        createWindow()
     }
 });

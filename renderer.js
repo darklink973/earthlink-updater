@@ -11,6 +11,9 @@ document.getElementById('check-version-button').addEventListener('click', async 
     const filePath = document.getElementById('version-input').value; // Get the path to the .exe file
     const logDiv = document.getElementById('log');
     const updateButton = document.getElementById('update-button');
+    const checkVersionButton = document.getElementById('check-version-button');
+
+    checkVersionButton.style.display = 'none';
     
     try {
         const installedVersion = await window.api.getFileVersion(filePath);
@@ -32,6 +35,7 @@ document.getElementById('check-version-button').addEventListener('click', async 
             updateButton.style.display = 'block'; // Show update button
         }
     } catch (error) {
+        updateButton.style.display = 'block';
         logDiv.innerHTML += `Erreur de la vérification de la version: ${error}<br>`;
     }
 });
@@ -39,8 +43,10 @@ document.getElementById('check-version-button').addEventListener('click', async 
 // Add event listener for update button
 document.getElementById('update-button').addEventListener('click', async () => {
     const logDiv = document.getElementById('log');
+    const updateButton = document.getElementById('update-button');
     const url = 'https://github.com/darklink973/EarthLinkLauncher/releases/latest/download/EarthLink.Launcher-setup.exe'; // Update with the actual download URL
 
+    updateButton.style.display = 'none';
     logDiv.innerHTML += `Téléchargement de la dernière version depuis: ${url}<br>`;
     
     try {
@@ -49,10 +55,11 @@ document.getElementById('update-button').addEventListener('click', async () => {
         logDiv.innerHTML += "Execution du fichier d'update...<br>";
         
         const output = await window.api.executeFile(filePath);
-        logDiv.innerHTML += `Installation terminée ! Output: ${output}<br>`;
+        logDiv.innerHTML += `Installation terminée ! ${output}<br>`;
 
         logDiv.innerHTML += 'Vous pouvez maintenant fermer cette fenètre.<br>';
     } catch (error) {
+        updateButton.style.display = 'block';
         logDiv.innerHTML += `Erreur durant la mise à jours: ${error}<br>`;
     }
 });

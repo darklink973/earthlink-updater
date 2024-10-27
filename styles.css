@@ -1,32 +1,65 @@
-/* styles.css */
+/* General Body Styles */
 body {
     font-family: Arial, sans-serif;
+    margin: 0;
     padding: 20px;
+    background-color: #333;
+    color: #f4f4f4;
 }
 
+/* Header Styles */
 h1 {
-    color: #333;
+    color: #f4f4f4;
+    text-align: center;
 }
 
+/* Button Styles */
 button {
-    background-color: #4CAF50; /* Vert */
-    color: white;
+    background-color: #4caf50; /* Green */
     border: none;
-    padding: 10px 15px;
+    color: white;
+    padding: 10px 20px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
     font-size: 16px;
-    margin: 4px 2px;
+    margin: 10px 0;
+    transition: background-color 0.3s;
     cursor: pointer;
     border-radius: 5px;
+    width: 100%; /* Make buttons full-width */
 }
 
-#path-display, #log {
-    margin-top: 20px;
-    font-size: 16px;
-    color: #555;
+button:hover {
+    background-color: #45a049;
+}
+
+/* Log Container Styles */
+#log {
+    background-color: #414141;
     border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 5px;
+    border-radius: 10px;
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 20px;
+}
+
+/* Scrollbar Styles for Log Container */
+#log::-webkit-scrollbar {
+    width: 10px;
+}
+
+#log::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+#log::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Hidden Button for Update */
+#update-button {
+    display: none; /* Start hidden */
 }

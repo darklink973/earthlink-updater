@@ -19,6 +19,7 @@
     "define-data-property": "^1.1.4",
     "define-properties": "^1.2.1",
     "detect-node": "^2.1.0",
+    "earthlink-updater": "file:",
     "end-of-stream": "^1.4.4",
     "env-paths": "^2.2.1",
     "es-define-property": "^1.0.0",
@@ -80,15 +81,15 @@
     "dist:linux": "npm run dist -- -l"
   },
   "build": {
-  "directories":{
-     "output": "build"
-  },
-  "mac": {
-     "icon": "icon/icon.icns"
-  },
-  "win": {
-     "icon": "icon/icon.png"
-   }
+    "directories": {
+      "output": "build"
+    },
+    "mac": {
+      "icon": "icon/icon.icns"
+    },
+    "win": {
+      "icon": "icon/icon.png"
+    }
   },
   "author": "Darkvox",
   "license": "ISC"

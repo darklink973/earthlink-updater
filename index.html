@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <title>Programme de mise a jour de Earthlink</title>
+    <style>
+        .body {
+            background-color: #313638
+            color(black)
+        }
+
+        #progress-container {
+            display: none; /* Cache la barre de progression par défaut */
+            width: 100%;
+            background-color: #f3f3f3;
+            margin-top: 20px;
+            height: 30px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #4caf50;
+            text-align: center;
+            color: #313638;
+            line-height: 30px;
+        }
+
+        #release-notes {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mise a jour earthlink</h1>
+    
+    <label>
+        <input type="checkbox" id="pre-release-checkbox">
+        Inclure les pré-releases (souvent inutilisable)
+    </label>
+    <button id="download-btn">Lancer le launcher !</button>
+
+    <div id="progress-container">
+        <div id="progress-bar">0%</div>
+    </div>
+
+    <div id="release-notes">
+        <h2>Notes de Version</h2>
+        <p id="version">Version : Chargement...</p>
+        <p id="notes">Notes : Chargement...</p>
+    </div>
+
+    <script>
+       function updateReleaseNotes() {
+            const includePreReleases = document.getElementById('pre-release-checkbox').checked;
+            window.electron.getLatestRelease(includePreReleases).then(release => {
+                console.log('Release reçue:', release);
+                document.getElementById('version').textContent = `Version: ${release.version}`;
+                document.getElementById('notes').textContent = `Notes: ${release.notes}`;
+            }).catch(error => {
+                console.error('Erreur lors de la récupération des notes de version:', error);
+            });
+        }
+
+        // Initial call to display release notes
+        updateReleaseNotes();
+
+        // Update release notes when checkbox changes
+        document.getElementById('pre-release-checkbox').addEventListener('change', () => {
+            updateReleaseNotes();
+        });
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            // Show progress bar
+            document.getElementById('progress-container').style.display = 'block';
+
+            // Perform download and execute
+            const includePreReleases = document.getElementById('pre-release-checkbox').checked;
+            window.electron.downloadAndExecute({ includePreReleases });
+        });
+
+        window.electron.onProgress((message) => {
+            const progressBar = document.getElementById('progress-bar');
+            if (message.includes('Téléchargé')) {
+                const percentage = message.split(' : ')[1];
+                progressBar.style.width = percentage;
+                progressBar.textContent = percentage;
+            } else {
+                progressBar.textContent = message;
+            }
+        });
+    </script>
+</body>
+</html>

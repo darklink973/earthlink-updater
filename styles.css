@@ -1,0 +1,14 @@
+@font-face {
+    font-family: "Kanit";
+    src: url(/assets/fonts/Kanit-Bold.ttf);
+}
+
+body{
+    font-family: "Kanit", Verdana;
+    min-height: 100vh;
+    background-color: #313638;
+}
+
+text{
+    color: white;
+}
